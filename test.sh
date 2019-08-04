@@ -14,11 +14,12 @@ while read line
 do
 	query=`echo "$line" | sed 's/ .*$//'`
 	regex=`echo "$line" | sed 's/^.* //'`
-	if (test `./select R "$query" | sort` -eq `egrep "$regex" test_data.txt | sort`)
+	query_result=`./select R "$query" | sort | tr '\n' ' '`
+	regex_result=`egrep "$regex" test_data.txt | sort | tr '\n' ' '` 
+	if (test "$query_result" = "$regex_result")
 	then
-		echo "./select R "$query" -- good"
+		echo "./select R $query --good"
 	else
-		echo "./select R "$query" -- not match"
+		echo "./select R $query --not match"
 	fi
-
 done
