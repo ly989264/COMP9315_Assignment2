@@ -7,6 +7,7 @@ make
 ./gendata 100 5 >>test_data.txt
 ./gendata 100 5 30 >>test_data.txt
 ./gendata 20 5 >>test_data.txt
+./gendata 300 5 103 >>test_data.txt
 ./create R 5 2 "0,1:1,1:2,1:3,1:4,1" >/dev/null
 cat test_data.txt | ./insert R >/dev/null
 cat test_source |
@@ -23,3 +24,4 @@ do
 		echo "./select R $query --not match"
 	fi
 done
+./stats R >test_res

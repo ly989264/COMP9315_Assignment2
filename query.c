@@ -196,10 +196,11 @@ Tuple raw_getNextTuple(Query q)
 		return NULL;
 	}
 	if (q->next_round_flag == 0) {
-		// printf("next_round_flag\n");
+		
 		Bits real_hash = q->known | calculate_unknown_value(q->unknown, q->valid_unknown, q->current_round);
 		// something wrong when ?,?,?,?,?
 		// printf("--------\nreal_hash: %d\n", real_hash);
+		// printf("next_round_flag\n");
 		// printf("valid_unknown: %d\n", q->valid_unknown);
 		// printf("current_round: %d\n", q->current_round);
 		// printf("depth: %d\n", depth(q->rel));
@@ -227,23 +228,11 @@ Tuple raw_getNextTuple(Query q)
 		q->last_visited = p;
 		// int real_valid_unknown = q->valid_unknown > depth(q->rel) + 1 ? depth(q->rel) + 1 : q->valid_unknown;
 		Page pg = getPage(dataFile(q->rel), p);
-		// printf("Searching page %d\n", p);
-		q->curpage = p;
-		q->is_ovflow = 1;//not
-		q->tuple_num_sum = pg->ntuples;
-		q->tuple_num_cur = 0;
-		q->curtup = 0;
 		q->next_round_flag = 1;// not
-
-		char* c = pageData(pg) + q->curtup;
-		// Tuple res = malloc((strlen(c)+1)*sizeof(char));
-		// strcpy(res, c);
-		Tuple res = c;
-		q->tuple_num_cur++;
-		q->curtup += strlen(c) + 1;
-		if (q->tuple_num_cur == q->tuple_num_sum) {
-			// if there is overflow page, use the overflow page
-			// else turn to the next round
+		// printf("Searching page %d\n", p);
+		// file may be empty
+		if (pg->ntuples == 0) {
+			// printf("Page Empty\n");
 			if (pageOvflow(pg) != NO_PAGE) {
 				q->is_ovflow = 0;
 				q->curpage = pageOvflow(pg);
@@ -258,15 +247,48 @@ Tuple raw_getNextTuple(Query q)
 				}
 				q->next_round_flag = 0;
 			}
+			goto HOLA;
+		} else {
+			// printf("Page not empty\n");
+			q->curpage = p;
+			q->is_ovflow = 1;//not
+			q->tuple_num_sum = pg->ntuples;
+			q->tuple_num_cur = 0;
+			q->curtup = 0;
+
+			char* c = pageData(pg) + q->curtup;
+			// Tuple res = malloc((strlen(c)+1)*sizeof(char));
+			// strcpy(res, c);
+			Tuple res = c;
+			q->tuple_num_cur++;
+			q->curtup += strlen(c) + 1;
+			if (q->tuple_num_cur == q->tuple_num_sum) {
+				// if there is overflow page, use the overflow page
+				// else turn to the next round
+				if (pageOvflow(pg) != NO_PAGE) {
+					q->is_ovflow = 0;
+					q->curpage = pageOvflow(pg);
+					q->curtup = 0;
+					q->tuple_num_cur = 0;
+				} else {
+					q->current_round++;
+					q->is_ovflow = 1;
+					if (q->current_round == self_pow(q->max_valid_unknown)) {
+						// done
+						q->finish_flag = 0;
+					}
+					q->next_round_flag = 0;
+				}
+			}
+			// if (strcmp(res, q->target_tuple)==0) { // something wrong here
+			// 	printf("Match!    %s    %s\n", res, q->target_tuple);
+			// 	return res;
+			// } else {
+			// 	printf("Not match!    %s    %s\n", res, q->target_tuple);
+			// 	getNextTuple(q);
+			// }
+			return res;
 		}
-		// if (strcmp(res, q->target_tuple)==0) { // something wrong here
-		// 	printf("Match!    %s    %s\n", res, q->target_tuple);
-		// 	return res;
-		// } else {
-		// 	printf("Not match!    %s    %s\n", res, q->target_tuple);
-		// 	getNextTuple(q);
-		// }
-		return res;
 	} else {
 		// printf("next\n");
 		// read the same page
